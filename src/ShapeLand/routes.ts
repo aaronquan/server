@@ -67,15 +67,24 @@ export function shapeLandRoutes(app, cache:NodeCache){
         //const gameUpdates:ShapeLandUpdater = cache.get('shapelandupdates');
         const game:ShapeLandServer = cache.get('shapeland');
         //console.log(req.body);
-        if('updates' in req.body){
-            //console.log(req.body.updates);
-            gameUpdates.updates(req.body.updates);
-            if(req.body.updates.projectiles){
-                if(req.body.updates.projectiles.length > 0) console.log(req.body.updates.projectiles);
+        if(game){
+            if('updates' in req.body){
+                //if(req.body.updates.projectiles){
+                //    if(req.body.updates.projectiles.length > 0) console.log(req.body.updates);
+                //}
+                gameUpdates.updates(req.body.updates, req.body.user.name);
             }
-        }
             //game.serveGameData();
-        sendJson(res, {game: {...game.serveGameData(req.body)}})
+            sendJson(res, {game: 
+                {
+                    ...game.serveGameData(req.body), 
+                    ...gameUpdates.sendObjects(req.body.user.name),
+                    added: {projectiles: req.body.updates.projectiles}
+                } 
+            });
+        }else{
+            sendJson(res, {success: false, reason: 'Game not ready'})
+        }
         //cache.set('shapelandupdates', gameUpdates);
     });
 
@@ -91,7 +100,7 @@ export function shapeLandRoutes(app, cache:NodeCache){
     app.get('/shapeLandServer', (req, res) => {
         const game:ShapeLandServer = cache.get('shapeland');
         //game.init();
-        sendJson(res, {game: {...game.servePlayers()}})
+        sendJson(res, {game: {...game.servePlayers()}, objects: gameUpdates.sendObjects('1')})
     });
 
     app.get('testShapeLandConnection', (req, res) => {

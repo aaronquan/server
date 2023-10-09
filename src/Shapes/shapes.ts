@@ -1,23 +1,5 @@
-
+import { Point } from "../ShapeLand/Base/Math";
 export const five = 5;
-
-export class Point{
-    x: number;
-    y: number;
-    constructor(x:number, y:number){
-        this.x = x;
-        this.y = y;
-    }
-    toJson(){
-        return {
-            x: this.x,
-            y: this.y
-        };
-    }
-    arr(){
-        return [this.x, this.y];
-    }
-}
 
 export class Circle{
     point:Point;

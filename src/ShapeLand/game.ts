@@ -1,8 +1,9 @@
-import { Point } from "../Shapes/shapes";
+import { Point, Vector2D } from "./Base/Math";
 import {connection} from '../db/database';
 import { Guest } from "../scripts/connect";
+import { Enemy } from "./Enemy/Enemy";
 
-class Player{
+export class Player{
     name: string;
     position: Point;
     constructor(name:string){
@@ -50,6 +51,7 @@ export type PlayerDetails = {
 }
 
 type ClientProjectile = {
+    id: number;
     owner:string;
     position:number[];
     velocity:number[];
@@ -65,15 +67,23 @@ export class ShapeLandServer{
 
     allPlayers: Map<string, Player>; // loaded players from database on startup
     
+    lastStepTime: number
     steps: number;
+
+    enemies: Enemy[];
     
-    clientSender:ShapeLandClientSender;
+    //clientSender:ShapeLandClientSender;
+    playerProjectiles: ClientProjectile[];
     constructor(){
         this.onlinePlayers = new Map<string, Player>();
         this.allPlayers = new Map<string, Player>();
+
+        this.lastStepTime = Date.now();
         this.steps = 0;
 
-        this.clientSender = new ShapeLandClientSender();
+        //this.clientSender = new ShapeLandClientSender();
+        this.playerProjectiles = [];
+        this.enemies = [];
     }
     init(save:() => void){
         //load saved users into game
@@ -83,6 +93,8 @@ export class ShapeLandServer{
                 pl.position = new Point(user.x, user.y);
                 this.allPlayers.set(user.name, pl);
             });
+            const e1:Enemy = new Enemy(new Point(4, 4));
+            this.enemies.push(e1);
             save();
         });
     }
@@ -113,10 +125,14 @@ export class ShapeLandServer{
     }
     //server step
     step(){
+        const now = Date.now();
+        const updateSecs = (now - this.lastStepTime)/1000;
+        this.lastStepTime = now;
         this.steps++;
         if(this.steps % 200 === 99){
             this.save();
         }
+        this.enemies.forEach(e => e.update(updateSecs));
     }
     //update positions of players
     update(updater:ShapeLandUpdater){
@@ -130,11 +146,19 @@ export class ShapeLandServer{
             const player = this.onlinePlayers.get(upd.name);
             if(player) player.position = new Point(upd.position[0], upd.position[1]);
         });
-        this.clientSender.addProjectiles(updater.projectiles);
-        /*updater.projectiles.forEach((proj:ClientProjectile) => {
+        
+        //this.clientSender.expireObjects();
+
+        updater.projectiles.forEach((proj:ClientProjectile) => {
             //update projectiles from client into this server
-            this.clientSender.addProjectile(proj);
-        });*/
+            //this.clientSender.addProjectile(proj);
+            if(!this.playerProjectiles.some(p => {
+                return p.id === proj.id && p.owner === proj.owner;
+            })){
+                //console.log(proj.id);
+                this.playerProjectiles.push(proj);
+            }
+        });
     }
     save(){
         Array.from(this.onlinePlayers.values()).forEach(player => player.saveData());
@@ -151,10 +175,12 @@ export class ShapeLandServer{
         const otherPlayers = new Map(this.onlinePlayers);
         otherPlayers.delete(upd.user.name);
         const players = Array.from(otherPlayers.values()).map((player) => player.obj());
-        const sendObjects = this.clientSender.sendObjects(upd.user.name);
+        const enemies = this.enemies.map((e) => e.obj());
+        //const sendObjects = this.clientSender.sendObjects(upd.user.name);
         return {
             players: players,
-            ...sendObjects
+            enemies: enemies
+            //...sendObjects // objects sent in gameUpdates
         }
     }
     requestMap(range:GridRange){
@@ -209,6 +235,12 @@ class ClientSenderObject{
         this.players.add(name);
         return this.obj;
     }
+    isExpired(currentTime:number){
+        if(this.expire < currentTime){
+            return true;
+        }
+        return false;
+    }
 }
 
 //adds client sender object and organises to send to other clients
@@ -218,22 +250,42 @@ export class ShapeLandClientSender{
     constructor(){
         this.projectiles = [];
     }
+    addProjectiles(projs:ClientProjectile[], owner){
+        projs.forEach((proj) => {
+            const cso = new ClientSenderObject(proj, Date.now()+1000);
+            cso.players.add(owner);
+            this.projectiles.push(cso);
+        });
+    }
     addProjectile(proj:ClientProjectile){
-        const cso = new ClientSenderObject(proj)
+        const cso = new ClientSenderObject(proj, Date.now()+1000);
         cso.players.add(proj.owner);
         this.projectiles.push(cso);
     }
     sendObjects(name:string){
         const projs = this.projectiles.reduce((arr, cso:ClientSenderObject) => {
-            if(cso.players.has(name)){
-                arr.push(cso.obj);
+            const obj = cso.sendObject(name);
+            if(obj){
+                arr.push(obj);
             }
             return arr;
         }, []);
+        if(projs.length > 0){
+            console.log(projs);
+        }
         const objects = {
             projectiles: projs
         };
         return objects;
+    }
+    expireObjects(){
+        const now = Date.now();
+        this.projectiles = this.projectiles.reduce((arr, proj) => {
+            if(!proj.isExpired(now)){
+                arr.push(proj);
+            }
+            return arr;
+        }, []);
     }
 }
 
@@ -242,19 +294,26 @@ export class ShapeLandUpdater{
     playersConnecting: string[];
     playersDisconnecting: string[];
     projectiles: ClientProjectile[];
+
+    clientSender: ShapeLandClientSender;
     constructor(){
         this.playerUpdates = [];
         this.playersConnecting = [];
         this.playersDisconnecting = [];
 
         this.projectiles = [];
+        this.clientSender = new ShapeLandClientSender();
     }
-    updates(updates:ShapeLandClientUpdate){
+    updates(updates:ShapeLandClientUpdate, username:string){
         if('player' in updates){
             this.playerUpdates.push(updates.player);
         }
         if('projectiles' in updates){
             this.projectiles = this.projectiles.concat(updates.projectiles);
+            //if(updates.projectiles.length > 0){
+                //console.log(updates.projectiles);
+            //}
+            this.clientSender.addProjectiles(updates.projectiles, username);
         }
     }
     connectPlayer(name:string){
@@ -264,11 +323,17 @@ export class ShapeLandUpdater{
         this.playersDisconnecting.push(name);
     }
 
+    sendObjects(name:string){
+        return this.clientSender.sendObjects(name);
+    }
+
     clear(){
         this.playerUpdates = [];
         this.playersConnecting = [];
         this.playersDisconnecting = [];
         this.projectiles = [];
+
+        this.clientSender.expireObjects();
     }
 }
 
