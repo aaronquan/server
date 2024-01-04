@@ -23,9 +23,9 @@ class Position2D{
 class Velocity2D{
     x:number;
     y:number;
-    constructor(x:number, y:number){
-        this.x = x;
-        this.y = y;
+    constructor(x?:number, y?:number){
+        this.x = x ? x : 0;
+        this.y = y ? y : 0;
     }
 }
 
@@ -95,7 +95,7 @@ class Grid2D{
 class SolidWall{
     position:Position2D
     constructor(){
-
+        this.position = new Position2D();
     }
 }
 
@@ -106,6 +106,7 @@ class Sand{
     velocity:Velocity2D;
     constructor(x?:number, y?:number){
         this.position = new Position2D(x, y);
+        this.velocity = new Velocity2D(0, 0);
     }
     setPosition(p:Position2D){
         this.position = p;
@@ -307,12 +308,12 @@ export class SandSimUpdates{
     }
     updates(updates:any){
         if('wallAdds' in updates){
-            updates.wallAdds.forEach((wall) => {
+            updates.wallAdds.forEach((wall:number[]) => {
                 this.addWallAdds(wall[0], wall[1]);
             });
         }
         if('removes' in updates){
-            updates.wallRemoves.forEach((wall) => {
+            updates.wallRemoves.forEach((wall:number[]) => {
                 this.addWallAdds(wall[0], wall[1]);
             });
         }

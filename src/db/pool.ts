@@ -6,9 +6,10 @@ import mysql, { Pool } from 'mysql2';
 export class DatabasePool{
     connectionLimit: number;
     pool: Pool;
-    constructor(config:mysql.ConnectionOptions){
+    constructor(config:mysql.ConnectionOptions, limit:number=10){
+        this.connectionLimit = limit;
         this.pool = mysql.createPool({
-            connectionLimit: 10,
+            connectionLimit: this.connectionLimit,
             ...config
         });
         if(config.host) console.log('creating database pool for '+config.host);
@@ -34,7 +35,7 @@ export class DatabasePool{
         const inserts = mysql.format(query, [table, values, where]);
         this.runQuery(inserts);
     }
-    simpleDelete(table:string, values:Record<string, any>, callback, errorCallback){
+    simpleDelete(table:string, values:Record<string, any>, callback:any, errorCallback:any){
         const query = 'DELETE FROM ?? WHERE ?';
         const inserts = mysql.format(query, [table, values]);
         this.runQuery(inserts, callback, errorCallback);
@@ -58,7 +59,7 @@ function fieldString(fields=['*']){
 }
 
 function queryThrowCallback(callback: (results:any, fields:any) => void){
-    return function(error, results, fields){
+    return function(error:any, results:any, fields:any){
         if(error) throw error;
         callback(results, fields);
     }
@@ -66,7 +67,7 @@ function queryThrowCallback(callback: (results:any, fields:any) => void){
 
 function queryCallback(callback: (results:any, fields:any) => void, 
 errorCallback: (error:any) => void){
-    return function(error, results, fields){
+    return function(error:any, results:any, fields:any){
         if(error){
             console.log(error.message);
             errorCallback(error);

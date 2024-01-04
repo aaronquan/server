@@ -4,7 +4,9 @@
     "moduleResolution": "NodeNext",
     "target": "es5",
     "sourceMap": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "strict": true,
+    "downlevelIteration": true
   },
   "include": [
     "src"

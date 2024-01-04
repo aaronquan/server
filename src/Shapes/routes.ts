@@ -15,55 +15,69 @@ function initSim(cache:NodeCache){
     cache.set<SandSimUpdates>('simupdates', simUpdates)
 }
 
-export function sims(app, cache:NodeCache){
+export function sims(app:any, cache:NodeCache){
     if(!cache.has('sandsim')){
         initSim(cache);
     }
     setInterval(() => {
-        const sim:SandSim = cache.get('sandsim');
-        const simUpdates:SandSimUpdates = cache.get('simupdates');
-        sim.update(simUpdates);
-        sim.step();
-        simUpdates.clear();
+        const sim:SandSim | undefined = cache.get('sandsim');
+        const simUpdates:SandSimUpdates | undefined = cache.get('simupdates');
+        if(sim && simUpdates){
+            sim.update(simUpdates);
+            sim.step();
+            simUpdates.clear();
+        }
         cache.set('sandsim', sim);
         cache.set('simupdates', simUpdates);
     }, tickTime);
-    app.get('/sandsim', (req, res) => {
-        const sim:SandSim = cache.get('sandsim');
-        const grid = sim.grid.grid;
-        sendJson(res, {objects: sim.getObjects(), colours: sim.colours()});
+    app.get('/sandsim', (req:any, res:any) => {
+        const sim:SandSim | undefined  = cache.get('sandsim');
+        if(sim){
+            const grid = sim.grid.grid;
+            sendJson(res, {objects: sim.getObjects(), colours: sim.colours()});
+        }
+        sendJson(res);
     });
 
-    app.post('/sandsim', (req, res) => {
-        const sim:SandSim = cache.get('sandsim');
-        
-        const grid = sim.grid.grid;
-        sendJson(res, {objects: sim.getObjects(), colours: sim.colours()});
+    app.post('/sandsim', (req:any, res:any) => {
+        const sim:SandSim | undefined  = cache.get('sandsim');
+        if(sim){
+            const grid = sim.grid.grid;
+            sendJson(res, {objects: sim.getObjects(), colours: sim.colours()});
 
-        //updates for user input
-        if('updates' in req.body){
-            const upd = cache.get<SandSimUpdates>('simupdates');
-            upd.updates(req.body.updates);
-            if(req.body.updates.wallAdds.length > 0) console.log(req.body.updates);
-            /*
-            if('walls' in req.body.updates){
-                //console.log(req.body.updates);
-                req.body.update.wallAdds.forEach((wall) => {
-                    upd.addWallAdds(wall[0], wall[1]);
-                })
-            }*/
+            //updates for user input
+            if('updates' in req.body){
+                const upd = cache.get<SandSimUpdates>('simupdates');
+                if(upd){
+                    upd.updates(req.body.updates);
+                    if(req.body.updates.wallAdds.length > 0) console.log(req.body.updates);
+                    /*
+                    if('walls' in req.body.updates){
+                        //console.log(req.body.updates);
+                        req.body.update.wallAdds.forEach((wall) => {
+                            upd.addWallAdds(wall[0], wall[1]);
+                        })
+                    }*/
 
-            cache.set<SandSimUpdates>('simupdates', upd);
+                    cache.set<SandSimUpdates>('simupdates', upd);
+                }
+            }
+        }
+        else{
+            sendJson(res);
         }
     });
 
-    app.get('/resetsim', (req, res) => {
+    app.get('/resetsim', (req:any, res:any) => {
         initSim(cache);
         res.json({});   
     });
 
-    app.get('/sandsimconnect', (req, res) => {
-        const sim:SandSim = cache.get('sandsim');
-        res.json({width:sim.width, height:sim.height});
+    app.get('/sandsimconnect', (req:any, res:any) => {
+        const sim:SandSim | undefined = cache.get('sandsim');
+        if(sim) res.json({width:sim.width, height:sim.height});
+        else{
+            res.json({});  
+        }
     })
 }

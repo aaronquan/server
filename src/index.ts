@@ -14,6 +14,7 @@ import { sims } from "./Shapes/routes";
 
 import path from "path";
 import { shapeLandRoutes } from "./ShapeLand/routes";
+import { snakeLandRoutes } from "./SnakeLand/routes";
 
 console.log('starting...');
 
@@ -73,8 +74,8 @@ type ReqQuery = {
 }
 
 setInterval(() => {
-    const ns:number = cache.get('nsecs');
-    cache.set('nsecs', ns+1);
+    const ns:number|undefined = cache.get('nsecs');
+    if(ns) cache.set('nsecs', ns+1);
 }, 1000);
 
 app.use(function (req, res, next) {
@@ -96,9 +97,9 @@ app.use(function(req:Request, res:Response, next){
 });
 
 app.use(function(req:Request, res:Response, next){
-    const ncalls:number = cache.get('ncalls');
+    const ncalls:number | undefined = cache.get('ncalls');
     //console.log('calls:', ncalls);
-    cache.set('ncalls', ncalls+1);
+    if(ncalls) cache.set('ncalls', ncalls+1);
     next();
 });
 
@@ -113,13 +114,17 @@ app.use(function (req, res, next) {
 });
 
 app.get('/', (req: Request, res:Response) => {
-    const circle:Circle = cache.get('circle');
+    const circle:Circle | undefined = cache.get('circle');
     //for(let i = 0; i<100000000; ++i){
 
     //}
-    sendJson(res, {five: five, circle: circle.toJson()});
-    circle.next();
-    cache.set('circle', circle);
+    if(circle) {
+        sendJson(res, {five: five, circle: circle.toJson()});
+        circle.next();
+        cache.set('circle', circle);
+    }else{
+        sendJson(res);
+    }
 });
 
 app.post('/test', (req, res) => {
@@ -156,6 +161,7 @@ sims(app, cache);
 
 shapeLandRoutes(app, cache);
 
+snakeLandRoutes(app, cache)
 
 class ZeroToFour{
     val: number;
@@ -185,10 +191,14 @@ class ZeroToFour{
 cache.set<ZeroToFour>('0t4', new ZeroToFour());
 
 app.get('/oneToFive', (req: Request, res:Response) => {
-    const ot5:ZeroToFour = cache.get('0t4');
-    res.json({value: ot5.val});
-    ot5.next();
-    cache.set('0t4', ot5);
+    const ot5:ZeroToFour | undefined = cache.get('0t4');
+    if(ot5){
+        res.json({value: ot5.val});
+        ot5.next();
+        cache.set('0t4', ot5);
+    }else{
+        res.json({});
+    }
 });
 /*
 connection.end(function(err){

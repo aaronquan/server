@@ -20,6 +20,16 @@ export class Point{
     arr(){
         return [this.x, this.y];
     }
+    static randomIntegerPoint(xMin:number=0, xMax:number=10, 
+        yMin:number=0, yMax:number=10):Point{
+        return new Point(randomRange(xMin, xMax), randomRange(yMin, yMax));
+    }
+}
+
+export function randomRange(min:number, max:number){
+    const range = max - min;
+    const number = Math.floor(Math.random()*range)+min;
+    return number;
 }
 
 export class Vector2D{

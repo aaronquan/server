@@ -19,33 +19,35 @@ function initShapeLand(cache:NodeCache){
 }
 
 
-export function shapeLandRoutes(app, cache:NodeCache){
+export function shapeLandRoutes(app:any, cache:NodeCache){
     if(!cache.has('shapeland')){
         initShapeLand(cache);
     }
     setInterval(() => {
         if(cache.has('shapeland')){
-            const game:ShapeLandServer = cache.get('shapeland');
-            game.update(gameUpdates);
-            game.step();
-            gameUpdates.clear();
-            cache.set('shapeland', game);
-            cache.set('shapelandupdates', gameUpdates);
+            const game:ShapeLandServer | undefined = cache.get('shapeland');
+            if(game){
+                game.update(gameUpdates);
+                game.step();
+                gameUpdates.clear();
+                cache.set('shapeland', game);
+                cache.set('shapelandupdates', gameUpdates);
+            }
         }
     }, tickTime);
-    app.post('/startShapeLandServer', (req, res) => {
+    app.post('/startShapeLandServer', (req:any, res:any) => {
         //todo
         sendJson(res, {});
     });
-    app.post('/closeShapeLandServer', (req, res) => {
+    app.post('/closeShapeLandServer', (req:any, res:any) => {
         //todo
         sendJson(res, {});
     });
 
-    app.post('/connectShapeLand', (req, res) => {
+    app.post('/connectShapeLand', (req:any, res:any) => {
         //const gameUpdates:ShapeLandUpdater = cache.get('shapelandupdates');
-        const game:ShapeLandServer = cache.get('shapeland');
-        if(req.body.user){
+        const game:ShapeLandServer | undefined = cache.get('shapeland');
+        if(req.body.user && game){
             //console.log(req.body.user);
             //works
             const name = req.body.user.name ? req.body.user.name 
@@ -63,9 +65,9 @@ export function shapeLandRoutes(app, cache:NodeCache){
         //cache.set('shapelandupdates', gameUpdates);
     });
 
-    app.post('/shapeLandServer', (req, res) => {
+    app.post('/shapeLandServer', (req:any, res:any) => {
         //const gameUpdates:ShapeLandUpdater = cache.get('shapelandupdates');
-        const game:ShapeLandServer = cache.get('shapeland');
+        const game:ShapeLandServer | undefined = cache.get('shapeland');
         //console.log(req.body);
         if(game){
             if('updates' in req.body){
@@ -88,7 +90,7 @@ export function shapeLandRoutes(app, cache:NodeCache){
         //cache.set('shapelandupdates', gameUpdates);
     });
 
-    app.post('/disconnectShapeLand', (req, res) => {
+    app.post('/disconnectShapeLand', (req:any, res:any) => {
         //const gameUpdates:ShapeLandUpdater = cache.get('shapelandupdates');
         if(req.body.user){
             console.log('disconnecting from shapeland '+req.body.user.name);
@@ -97,13 +99,17 @@ export function shapeLandRoutes(app, cache:NodeCache){
         sendJson(res, {});
     });
 
-    app.get('/shapeLandServer', (req, res) => {
-        const game:ShapeLandServer = cache.get('shapeland');
+    app.get('/shapeLandServer', (req:any, res:any) => {
+        const game:ShapeLandServer | undefined = cache.get('shapeland');
         //game.init();
-        sendJson(res, {game: {...game.servePlayers()}, objects: gameUpdates.sendObjects('1')})
+        if(game){
+            sendJson(res, {game: {...game.servePlayers()}, objects: gameUpdates.sendObjects('1')});
+        }else{
+            sendJson(res);
+        }
     });
 
-    app.get('testShapeLandConnection', (req, res) => {
+    app.get('testShapeLandConnection', (req:any, res:any) => {
         if(req.query.user){
             //connectShapeLandUser(req.query.user);
         }

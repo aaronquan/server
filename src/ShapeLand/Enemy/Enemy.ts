@@ -1,4 +1,4 @@
-import { Point, Vector2D } from "../Base/Math";
+import { Point, Vector2D } from "../../Base/Math";
 import { Player } from "../game";
 
 export type ServerEnemyObj = {
@@ -90,7 +90,10 @@ export class Turret{
     }
     detectPlayers(players: Player[]){
         const detectRadiusSquared = this.detectRadius*this.detectRadius;
-        const closestPlayer = {player: null, distance: detectRadiusSquared};
+        const closestPlayer:{
+            player: null| Player, 
+            distance: number
+        } = {player: null, distance: detectRadiusSquared};
         players.forEach((player) => {
             const distVec = new Vector2D(player.position.x-this.position.x, 
                 player.position.y-this.position.y);

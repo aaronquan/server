@@ -1,4 +1,4 @@
-import { Point } from "../ShapeLand/Base/Math";
+import { Point } from "../Base/Math";
 export const five = 5;
 
 export class Circle{
